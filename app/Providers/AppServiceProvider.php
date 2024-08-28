@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\ChatgptService;
 use App\EmailService;
 use App\GrammerCheckerService;
 use Illuminate\Support\ServiceProvider;
@@ -17,43 +18,40 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
 
-        $emailServicee = new EmailService('a simple title', new GrammerCheckerService()); // traditional way in php pure
+        # Important #
+        // below code is not clean ==> it's not a good way for using.
+        // just read it, do not use it in your projects.
+        // in next commit i have said the correct way.
 
-        $emailService1 = resolve(EmailService::class, ['title' => 'a simple title']);
+        // ===============================================================
+
+        # just remember, resolve uses service container to create object and return.
+
+        // ================================================================
+
+        // traditional way in php pure:
+        $emailServicee = new EmailService('a simple title', new GrammerCheckerService('my-token', new ChatgptService('random-token')));
+
+        $emailService1 = resolve(EmailService::class, ['title' => 'a simple title',
+            'grammerCheckerService' => resolve(GrammerCheckerService::class, ['token' => 'my-Token',
+                'chatgptService' => resolve(ChatgptService::class, ['token' => 'random-token'])
+            ])
+        ]);
+
+        dd($emailService1);
 
         /*
-        in traditional form of pure php, we have to create an object from GrammerCheckerService manually
-        and pass it to constructor of EmailService.
+         # remmember: laravel service container checks the paramters of the classes constructor in resolving process.
+                      if they have dependencies on other classes, it will resolve them (if we provide required paramters)
 
-        but in laravel form, there is no need to pass anything for GrammerCheckerService.
+           now, even if the dependencies of a class, has dependency to other classes, service container will check them
+           and resolve them if we provide required paramters.
 
-        when laravel service container wants to create an object from EmailService,
-        it checks that EmailService constructor has $title parameter & we have pas
-        ['title' => 'a simple title'] for it in resolve ==> so, service container passes 'a simple title'
-        to EmailService constructor.
-
-        but, for the seconde parameter of EmailService construct, service container sees that it has type hint
-        & we haven't pass anything in resolve
-
-        so, first it checks the type of the class to find out if it's a class, interface or abstract
-        and if it's a class, it does like this ==> resolve(GrammerCheckerService::class) and pass it to
-        EmailService constructor.
-
-        something like this ==> resolve(EmailService::class, ['title' => 'a simple title',
-                                                              'grammerCheckerService' => resolve(grammerCheckerService::class)]);
-
-        this process which service container checks EmailService construct's parameters
-        and pass the parameters which we have defined in resolve() function,
-        and checks the type hint and its type (class, interface, abstract) and create an object from that,
-        is called reflection
+           so ==> service container, recursively, checks all the dependencies of classes
+                  and even the dependencies of the dependencies of classes and resolve them
+                  if we provide required paramters.
 
         */
 
-        // we can even do like this:
-        $emailService2 = resolve(EmailService::class, ['title' => 'a simple title', 'grammerCheckerService' => new GrammerCheckerService()]);
-
-        dd($emailService2 == $emailService1);
-
-        // $emailService2 == $emailService1 ==> if objects are from one class and have same amount of properties, it gives true.
     }
 }
