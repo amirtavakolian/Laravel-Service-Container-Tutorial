@@ -15,30 +15,29 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        $emailService1 = new EmailService(); // traditional way of making object
+        // what if our classes have parameter in constructor:
 
-        // resolve() ==> Resolve a service from the service container.
+        $emailServicee = new EmailService('a random title'); // traditional way in php pure
 
-        $emailService2 = resolve(EmailService::class); // using service container to create an object
+        $emailService = resolve(EmailService::class, ['title' => 'a random title']); // pass param using service container
 
-        $emailService3 = resolve('App\EmailService');
+        dd($emailServicee->title, $emailService->title);
 
-        // service container's responsibility is creating object (like a factory)
-        // resolve() function asks the container for an object & return it
+        // pas the parameter of constructor like above
 
-        /*
-          Ex:
-          a doctor asks his/her assistant (resolve()) to pas him a tool
-          there is a box which contains several tools (service container)
-          assistant checks the box and get the tool (object) and return it to the doctor
-        */
+        // ============================================================
+        // ============================================================
 
-        dd(
-            $emailService1 == $emailService2
-            &&
-            $emailService2 == $emailService3
-            &&
-            $emailService1 == $emailService3
-        );
+        $emailService1 = resolve(EmailService::class, ['title' => 'a random title']);
+
+        $emailService2 = resolve(EmailService::class, ['title' => 'a random title']);
+
+        $emailService3 = resolve(EmailService::class, ['title' => 'a random title']);
+
+        $emailService4 = resolve(EmailService::class, ['title' => 'a random title']);
+
+        dd($emailService1, $emailService2, $emailService3, $emailService4);
+
+        // above code creates 4 diffrent objects and fill the title property
     }
 }
