@@ -5,7 +5,7 @@ namespace App;
 class EmailService
 {
 
-    public function __construct(public string $title)
+    public function __construct(public string $title, GrammerCheckerService $grammerCheckerService)
     {
     }
 
