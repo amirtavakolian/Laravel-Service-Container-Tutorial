@@ -1,0 +1,95 @@
+
+lets compare app() vs resolve()
+what we can do with each of them? (what features do they have?)
+
+# resolve(): the only thing that we can do with resolve is, passing the name of the class which we want an object, to it
+then resolve(), requests the service container ( using app() ) to create an object from a class & return it to the client.
+
+# we can do the exact work which resolve does, with app() ==> resolve uses app to do its job. #
+
+If the class which we have asked from service container to create object for us, has parameters (dependencies or…)
+which are not fixed (change each time we want an object from), so, service container can’t resolve them.
+So  we should pass the parameters to resolve() function.
+
+use resolve(), when a class constructor has parameters which their value change on run time
+or you want to pass different parameters directly, each time you wana make an instance from a class.
+So you can directly pass the parameters value of a class constructor and make instance from them using resolve()
+
+Ex: user must enter the values | ReportService, which has different title and author for each instance.
+
+Ex: imagine a screwdriver which, depending on the task we want to perform,
+we should attach the appropriate bit for the job.
+We don’t always use a fixed type of screwdriver, we need to change the bit based on the task we want to do.
+
+# again: we can do the exact work which resolve does, with app() ==> resolve uses app to do its job. #
+
+Ex:
+class ReportService
+{
+    public function __construct(public string $title, public string $author) { }
+}
+
+# resolve gets an instance from service container and return.
+$reportService = resolve(ReportService::class, ['title' => 'Monthly Report', 'author' => 'John Doe']);
+
+use resolve(), when you want do the dependency injection manually, not automatically.
+Ex: creating instance from a class with specific and not fix parameters.
+
+
+The resolve function does not play a role in managing and injecting dependencies.
+managing and injecting dependencies is the responsibility of the service container.
+
+The service container can identify the dependencies required by the class for which we requested an object,
+create them, and automatically inject them. Finally, it creates the required object and returns it.
+
+For those classes that have parameters which the service container does not know what value to provide for,
+such as parameters of type abstraction, string, int, etc.,
+we need to introduce these classes to the service container using bind or singleton.
+this way, we tell it how to create objects from them and with what data.
+
+So, by using the service container, we can create our applications with a better and more maintainable structure.
+
+=======================================================
+
+App() function:
+what can we do with app() function? what features does it give us?
+
+requesting an object:
+with this function, you can request the service container to create an object of a class for you, just like what resolve() does.
+
+Adding a new service to the container service + injecting dependencies dynamically – automatically:
+this function also gives us access to the service container. So with the app function, we can bind (register/add)
+classes/services to the container service, allowing it to automatically manage and inject dependencies for the classes
+we introduced to the container service with the app.
+
+Direct access to the container service:
+with the app function, we can access the container service and make configurations on it.
+
+Ex: $container = app();
+
+If the parameters are fixed (set by default or set through the Laravel container) ==> already configured in the container,
+and there is no need to change them, you can use the app()
+
+Ex: $reportService = app(UserRepository::class);   app() = automatically inject dependencies
+So, laravel will automatically inject the required parameters from the container.
+
+public function register()
+{
+ 	app()->bind('key', function(){
+       	    return new ServiceClass();
+           )};
+
+    $this->app->singleton(UserRepository::class, function ($app) {
+        return new UserRepository();
+    });
+}
+
+public function register()
+{
+    $this->app->singleton(EmailService::class, function ($app) {
+        $chatgptService = new ChatgptService('random-token');
+        $grammerCheckerService = new GrammerCheckerService('my-Token', $chatgptService);
+
+        return new EmailService('a simple title', $grammerCheckerService);
+    });
+}
