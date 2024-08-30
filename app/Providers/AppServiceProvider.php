@@ -4,7 +4,6 @@ namespace App\Providers;
 
 use App\ChatgptGrammerCheckerService;
 use App\EmailService;
-use App\GrammerCheckerService;
 use App\IGrammerChecker;
 use Illuminate\Support\ServiceProvider;
 
@@ -18,74 +17,107 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        # binding interface or abstract:
-        // imagine you have several grammer checker like chatgpt grammer checker, copilot, gemini &...
-        // use service container to bind interface so, you can easily change the grammer checker service
-        // in your controller or where ever you need grammer checker service.
+
+        // Singletone:
 
         $this->app->bind(IGrammerChecker::class, ChatgptGrammerCheckerService::class);
 
-        // now in your controller do like this:
-        // __construct(private IGrammerChecker $grammerCheckerService){}
-        // or you can use resolve() or app() in the methods of your controller.
+        $service1 = resolve(EmailService::class);
+        $service2 = resolve(EmailService::class);
+        $service3 = resolve(EmailService::class);
 
-        // ==========================================================================
+        dump($service1, $service2, $service3);
 
         /*
-        until now we have type hinted classes, and service container read the type hints and
-        create an object for us
+        if you see the result of dd($service1, $service2, $service3) you will see this:
 
-        but, what if we type hint interface or abstract classes?
-        service container must create object from classes which have implemented that interface or extend that abstract
-        but how service container can make object from them?
+        App\EmailService^ {#283
+          -grammerCheckerService: App\ChatgptGrammerCheckerService^ {#284
+            -token: ""
+          }
+        } // app\Providers\AppServiceProvider.php:29
+        App\EmailService^ {#285
+          -grammerCheckerService: App\ChatgptGrammerCheckerService^ {#286
+            -token: ""
+          }
+        } // app\Providers\AppServiceProvider.php:29
+        App\EmailService^ {#287
+          -grammerCheckerService: App\ChatgptGrammerCheckerService^ {#288
+            -token: ""
+          }
+        }
 
-        we have to define classes which service container should create object from
-        when we type hint an interface or an abstract
+        look at the object ids of EmailService ==> #283 #285 #287
+        & look at the grammerCheckerService object ids ==> #284 #286 #288
+
+        all the ids are not same so it means that SC has created diffrent objects
+        from EmailService & GrammerCheckerService for us
+
         */
 
-        // ================================================================================
+        // ===============================================================================
 
-        # First method:
+        $this->app->bind(IGrammerChecker::class, ChatgptGrammerCheckerService::class, true);
 
-        $emailService = resolve(EmailService::class, ['title' => 'random title',
-            'grammerCheckerService' => resolve(ChatgptGrammerCheckerService::class)]);
+        $service1 = resolve(EmailService::class);
+        $service2 = resolve(EmailService::class);
+        $service3 = resolve(EmailService::class);
 
-        // it's a good method but, we want service container inject the dependency automatically
-        // when we type hint an inteface or an abstract.
+        dd($service1, $service2, $service3);
 
-        // ================================================================================
+        /*
 
-        # Seconde Method:
+        App\EmailService^ {#299
+          -grammerCheckerService: App\ChatgptGrammerCheckerService^ {#295
+            -token: ""
+          }
+        } // app\Providers\AppServiceProvider.php:64
+        App\EmailService^ {#291
+          -grammerCheckerService: App\ChatgptGrammerCheckerService^ {#295
+            -token: ""
+          }
+        } // app\Providers\AppServiceProvider.php:64
+        App\EmailService^ {#284
+          -grammerCheckerService: App\ChatgptGrammerCheckerService^ {#295
+            -token: ""
+          }
+        }
 
-        $this->app->bind(IGrammerChecker::class, ChatgptGrammerCheckerService::class);
-        $emailService1 = resolve(EmailService::class, ['title' => 'my title']);
+        as you see, the objects which SC has created for us from ChatgptGrammerCheckerService has same id
 
-        // now, service container knows that when a class has dependency on IGrammerCheckerwhich, from its type hint,
-        // which class it should create object from and return us
+        it's because of the "shared" parameter of bind() which we have set it to true ==> singletone
 
-        // Ex: when ever a class has dependecy on IGrammerChecker::class, create an object from ChatgptGrammerCheckerService
+        it means SC has created only one object from ChatgptGrammerCheckerService for us. (it's construct called only once)
+        all $service1, $service2, $service3 variables are pointing to one object ==> references to one object. ===>
+        one human with 3 names.
 
-        # notice:
-        # here ChatgptGrammerCheckerService has a $token parameter in constructor which we have gave default value.
+        SC creates one object for the first time, and keeps the reference to that object.
+        for next times that you use app() or resolve() to get an object from a class,
+        SC just returns the reference to that object and not create a new object anymore.
 
-        // ------------------------------------------------
+        $this->app->singleton(Foo::class, Bazz::class);
+        $service = resolve(Foo::class);
 
-        # how to pass a value to $token parameter of ChatgptGrammerCheckerService:
+        it's the implementation of singleton desing pattern
 
-        $this->app->bind(IGrammerChecker::class, function () {
-            return new ChatgptGrammerCheckerService('random-token');
+        # why should we use singleton design pattern:
+        some processes are time-consuming or heavy to be done
+        Ex: connecting to database.
 
-            // here you can read from config or env
-            // you can query to database
-            // and what ever you need to do
+        so, whenever we wana create object from database class, this process must be done which takes
+        time, ram & etc... ==> fucks the performance of our software
 
-        });
-        $emailService2 = resolve(EmailService::class, ['title' => 'my title']);
+        so, we can use singleton ==> create object once, store it somewhere, each time we need an object from
+        database class, return the created object & don't create new object (better performance)
 
-        dd($emailService2);
+        so there is no need to filling the ram with repetitive objects.
 
-        // ================================================================================
+        SC has singleton() method which binds the class only once
 
+        one its disadvantages is the created object will not change anymore untill we reset our software.
+        but its advantage is, there is no need to resolve anytime we need an object from database class
+        ==> better performance.
 
+         */
     }
 }
