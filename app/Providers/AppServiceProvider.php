@@ -2,11 +2,10 @@
 
 namespace App\Providers;
 
-use App\ChatgptService;
+use App\ChatgptGrammerCheckerService;
 use App\EmailService;
 use App\GrammerCheckerService;
-use Illuminate\Foundation\Application;
-use Illuminate\Support\Facades\Log;
+use App\IGrammerChecker;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,99 +18,74 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        # binding interface or abstract:
+        // imagine you have several grammer checker like chatgpt grammer checker, copilot, gemini &...
+        // use service container to bind interface so, you can easily change the grammer checker service
+        // in your controller or where ever you need grammer checker service.
 
-        // first read "diffrents between resolve and app.txt"
+        $this->app->bind(IGrammerChecker::class, ChatgptGrammerCheckerService::class);
 
-        // ============================================================
-
-        # simple example of using bind ==> bind a string to a work
-        # string amir to return 'hi, im amir' work
-
-        # Ex: I tell my brother to pay the money of dinner ==> string: pay-dinner-price
-        # now my brother must do several works: get to the cachier, put of his wallet, give his atm card, tell his password
-        # so, we bind only one string (pay-dinner-price) to these several works.
-
-        // so, you can prepare a task in advance, and call that task wherever you want ==> use bind()
-
-        $this->app->bind('amir', function (Application $app) {
-            return 'hi, im amir';
-        });
-
-        dump(app('amir'));  // it does the work we have defined ==> return 'hi, im amir';
-        dump(resolve('amir')); // it does the work we have defined ==> return 'hi, im amir';
-
-        // so, in any place in your project, when ever you resolve amir, it returns a string 'hi, im amir'
-
-        // --------------------------------------------------------------
-
-        $this->app->bind('log-something', function () {
-            Log::info('log this text for me');
-            // send email
-            // query to database
-            // cache something
-            // :))
-            return 'logging has been done';
-        });
-
-        // you can do any work you want before or after Logging or doing payment :D 
-
-        dump(resolve('log-something'));  // it does the work we have defined in above
-        dump(app('log-something'));  // it does the work we have defined in above
-
-        // =============================================================
-
-        // now, we want to bind the 'creating object from ChatgptService' task to a string :D
-
-        // if you create object from a class in 100 places in your project using 'new' keyword,
-        // if you want to make changes in parameter of the class, you have to manually make changes
-        // in all the places you have used 'new' keyword.
-
-        // so, use service container ==> pass the responsibility of creating object to service container.
-        // no need to make changes in your codes anymore
-
-        // ================================================================
-
-        // below code is the refactor version of the previous commit's code:
-        // use below code if the value of the parameters of fixed and not change
-        // its more clear than the previous commit's code
-
-        $this->app->bind(ChatgptService::class, function () {
-            return new ChatgptService('random-token-1');
-        });
-
-        $this->app->bind(GrammerCheckerService::class, function () {
-            return new GrammerCheckerService('random-token-2', $this->app->make(ChatgptService::class));
-        });
-
-        $this->app->bind(EmailService::class, function () {
-            return new EmailService('email-title', $this->app->make(GrammerCheckerService::class));
-        });
+        // now in your controller do like this:
+        // __construct(private IGrammerChecker $grammerCheckerService){}
+        // or you can use resolve() or app() in the methods of your controller.
 
         // ==========================================================================
 
-        // use below code if the parameters are not fixed and change, each time we need an instance from the service
+        /*
+        until now we have type hinted classes, and service container read the type hints and
+        create an object for us
 
-        $emailService = resolve(EmailService::class,
-            ['title' => 'a random title',
-                'grammerCheckerService' => resolve(GrammerCheckerService::class,
-                    ['token' => 'random-token-1',
-                        'chatgptService' => resolve(ChatgptService::class, ['token' => 'random-token-2'])])
-            ]);
+        but, what if we type hint interface or abstract classes?
+        service container must create object from classes which have implemented that interface or extend that abstract
+        but how service container can make object from them?
 
-        // you can even
+        we have to define classes which service container should create object from
+        when we type hint an interface or an abstract
+        */
 
-        $emailService1 = app(EmailService::class,
-            ['title' => 'a random title',
-                'grammerCheckerService' => resolve(GrammerCheckerService::class,
-                    ['token' => 'random-token-1',
-                        'chatgptService' => resolve(ChatgptService::class, ['token' => 'random-token-2'])])
-            ]);
+        // ================================================================================
 
+        # First method:
 
-        // ==========================================================================
+        $emailService = resolve(EmailService::class, ['title' => 'random title',
+            'grammerCheckerService' => resolve(ChatgptGrammerCheckerService::class)]);
 
-        // traditional way in php pure:
-        $emailService = new EmailService('title', new GrammerCheckerService('token', new ChatgptService('token')));
+        // it's a good method but, we want service container inject the dependency automatically
+        // when we type hint an inteface or an abstract.
+
+        // ================================================================================
+
+        # Seconde Method:
+
+        $this->app->bind(IGrammerChecker::class, ChatgptGrammerCheckerService::class);
+        $emailService1 = resolve(EmailService::class, ['title' => 'my title']);
+
+        // now, service container knows that when a class has dependency on IGrammerCheckerwhich, from its type hint,
+        // which class it should create object from and return us
+
+        // Ex: when ever a class has dependecy on IGrammerChecker::class, create an object from ChatgptGrammerCheckerService
+
+        # notice:
+        # here ChatgptGrammerCheckerService has a $token parameter in constructor which we have gave default value.
+
+        // ------------------------------------------------
+
+        # how to pass a value to $token parameter of ChatgptGrammerCheckerService:
+
+        $this->app->bind(IGrammerChecker::class, function () {
+            return new ChatgptGrammerCheckerService('random-token');
+
+            // here you can read from config or env
+            // you can query to database
+            // and what ever you need to do
+
+        });
+        $emailService2 = resolve(EmailService::class, ['title' => 'my title']);
+
+        dd($emailService2);
+
+        // ================================================================================
+
 
     }
 }
