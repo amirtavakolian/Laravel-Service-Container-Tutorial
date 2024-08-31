@@ -17,18 +17,37 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        $this->app->bind('A', EmailService::class);
-        $this->app->bind('C', 'A');
+        /*
+        if you have classes which get parameter from string or should read data from config,
 
-        dd(resolve('C'), resolve('A'));
+        Ex: $user, $pass from constructor
+            read token from config or ENV for connecting to sms or payment gateway
+            query to database to get data
+            & etc...
 
-        // we can even pass a string for mapping that to a class or bind it to a class
+        here we should pass clouser to function ==> write the codes of getting data from database
+        or read data from config, ENV etc... in that clouser
+        finally we create an object and return it.
 
-        // here we have mapped string 'A' to EmailService
-        // then we have mapped string 'C' to 'A'
+        */
 
-        // service container first maps 'A' to EmailService
-        // when it wants to map 'C' to 'A' it checks that 'A' is not a class
-        // but when it checks that 'A' is mapped to EmailService, so, 'C' will be mapped to EmailService too
+        app()->bind('chatgpt', function (){
+            // read from config
+            // query to database
+            // read from env
+            // etc...
+            return new ChatgptGrammerCheckerService('random-token');
+        });
+
+        app()->singleton('chatgpt', function (){
+            return new ChatgptGrammerCheckerService('random-token');
+        });
+
+        dd(resolve('chatgpt'));
+
+        // imagine you have wrote 5 6 lines of code to get an object from a class
+        // and you have repeated it several times in your codes
+        // you can put those 5 6 lines of code in above clouser and just resolve it.
+
     }
 }
