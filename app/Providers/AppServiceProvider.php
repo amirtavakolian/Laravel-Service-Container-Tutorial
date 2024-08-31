@@ -3,7 +3,12 @@
 namespace App\Providers;
 
 use App\ChatgptGrammerCheckerService;
+use App\CopilotGrammerCheckerService;
 use App\EmailService;
+use App\Http\Controllers\ArticleController;
+use App\Http\Controllers\PostController;
+use App\Http\Controllers\Test2Controller;
+use App\Http\Controllers\TestController;
 use App\IGrammerChecker;
 use Illuminate\Support\ServiceProvider;
 
@@ -17,37 +22,58 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+
+        # Contextual Binding:
+
+        // if one interface is injected to controller A, inject some class
+        // and if that interface is injected to controller B, inject another class :D
+
+        // I want to get an object from CopilotGrammerCheckerService for ArticleController
+        // & an object from ChatgptGrammerCheckerService for PostController.
+
+        $this->app->when(ArticleController::class)
+            ->needs(IGrammerChecker::class)
+            ->give(CopilotGrammerCheckerService::class);
+
+        $this->app->when(PostController::class)
+            ->needs(IGrammerChecker::class)
+            ->give(ChatgptGrammerCheckerService::class);
+
+        
+        // you can pass an array of controllers:
+        $this->app->when([TestController::class, Test2Controller::class])
+            ->needs(IGrammerChecker::class)
+            ->give(ChatgptGrammerCheckerService::class);
+
         /*
-        if you have classes which get parameter from string or should read data from config,
-
-        Ex: $user, $pass from constructor
-            read token from config or ENV for connecting to sms or payment gateway
-            query to database to get data
-            & etc...
-
-        here we should pass clouser to function ==> write the codes of getting data from database
-        or read data from config, ENV etc... in that clouser
-        finally we create an object and return it.
-
+            imagine you need an object from PaypalPaymentService for BookController
+            and customers should pay for the books for Paypal
+            and you need and object from MasterCardPaymentService for ProductController
+            ==> customers should pay for products with master card
         */
 
-        app()->bind('chatgpt', function (){
-            // read from config
-            // query to database
-            // read from env
-            // etc...
-            return new ChatgptGrammerCheckerService('random-token');
-        });
+        // app()->bind(IGrammerChecker::class, CopilotGrammerCheckerService::class);
+        // above code just gives an instance from CopilotGrammerCheckerService to both controllers :D
 
-        app()->singleton('chatgpt', function (){
-            return new ChatgptGrammerCheckerService('random-token');
-        });
+        // ===================================================================
 
-        dd(resolve('chatgpt'));
+        /*
+            if ArticleController is like this:
+            public function __construct(private string $token){}
 
-        // imagine you have wrote 5 6 lines of code to get an object from a class
-        // and you have repeated it several times in your codes
-        // you can put those 5 6 lines of code in above clouser and just resolve it.
+            if PostController is like this:
+            public function __construct(private string $token){}
 
+            I want give config('app.cipher') to $token of ArticleController
+            and give config('app.locale') to $token of PostController
+        */
+
+        $this->app->when(ArticleController::class)
+            ->needs('$token')
+            ->give(config('app.cipher'));
+
+        $this->app->when(PostController::class)
+            ->needs('$token')
+            ->give(config('app.locale'));
     }
 }
